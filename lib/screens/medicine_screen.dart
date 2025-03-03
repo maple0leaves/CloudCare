@@ -4,6 +4,17 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
+
+Future<void> requestExactAlarmPermission() async {
+  if (await Permission.scheduleExactAlarm.isDenied) {
+    final AndroidIntent intent = AndroidIntent(
+      action: 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
+    );
+    await intent.launch();
+  }
+}
 
 // 服药提醒界面
 class MedicineScreen extends StatefulWidget {
@@ -21,24 +32,14 @@ class _MedicineScreenState extends State<MedicineScreen> {
   @override
   void initState() {
     super.initState();
+    requestExactAlarmPermission(); // 请求精准定时通知权限
     tz.initializeTimeZones(); // 初始化时区
     _initializeNotifications(); // 初始化通知
     _fetchReminders(); // 获取服务器上的服药提醒
   }
 
   // 初始化本地通知
-  // Future<void> _initializeNotifications() async {
-  //   const AndroidInitializationSettings androidSettings =
-  //       AndroidInitializationSettings('@mipmap/ic_launcher');
-  //   const InitializationSettings settings = InitializationSettings(
-  //     android: androidSettings,
-  //   );
-  //   await _notificationsPlugin.initialize(settings);
-  // }
   Future<void> _initializeNotifications() async {
-    final FlutterLocalNotificationsPlugin _notificationsPlugin =
-        FlutterLocalNotificationsPlugin();
-
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -52,26 +53,23 @@ class _MedicineScreenState extends State<MedicineScreen> {
     if (await Permission.notification.request().isDenied) {
       print("用户未授予通知权限");
     }
+
+    // await _notificationsPlugin.show(
+    //   0,
+    //   '测试通知',
+    //   '这是一个测试通知',
+    //   NotificationDetails(
+    //     android: AndroidNotificationDetails(
+    //       'test_channel',
+    //       '测试频道',
+    //       importance: Importance.high,
+    //       priority: Priority.high,
+    //     ),
+    //   ),
+    // );
   }
 
   // 从服务器获取服药提醒
-  // Future<void> _fetchReminders() async {
-  //   try {
-  //     Response response = await _dio.get(
-  //       'https://yourserver.com/api/reminders',
-  //     );
-  //     if (response.data['status'] == 'success') {
-  //       setState(() {
-  //         reminders.clear();
-  //         reminders.addAll(
-  //           List<Map<String, dynamic>>.from(response.data['reminders']),
-  //         );
-  //       });
-  //     }
-  //   } catch (e) {
-  //     _showError('获取服药提醒失败: $e');
-  //   }
-  // }
   Future<void> _fetchReminders() async {
     await Future.delayed(Duration(seconds: 1)); // 模拟网络请求延迟
     setState(() {
@@ -91,25 +89,7 @@ class _MedicineScreenState extends State<MedicineScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  // 添加新的服药提醒，并存储到服务器
-  // Future<void> _addReminder() async {
-  //   if (selectedTime == null) return;
-  //   String formattedTime = '${selectedTime!.hour}:${selectedTime!.minute}';
-  //   try {
-  //     Response response = await _dio.post(
-  //       'https://yourserver.com/api/add_reminder',
-  //       data: {'time': formattedTime},
-  //     );
-  //     if (response.data['status'] == 'success') {
-  //       setState(() {
-  //         reminders.add({'id': response.data['id'], 'time': formattedTime});
-  //       });
-  //       _scheduleNotification(response.data['id'], formattedTime); // 设置本地通知
-  //     }
-  //   } catch (e) {
-  //     _showError('添加服药提醒失败: $e');
-  //   }
-  // }
+  // 添加新的服药提醒
   Future<void> _addReminder() async {
     if (selectedTime == null) return;
     String formattedTime = '${selectedTime!.hour}:${selectedTime!.minute}';
@@ -120,26 +100,10 @@ class _MedicineScreenState extends State<MedicineScreen> {
     });
 
     _scheduleNotification(reminders.last['id'], formattedTime);
-    _showError(TimeOfDay.now().toString());
+    _showError("提醒已添加，时间: $formattedTime"); // 调试信息
   }
 
   // 删除服药提醒
-  // Future<void> _deleteReminder(int id) async {
-  //   try {
-  //     Response response = await _dio.post(
-  //       'https://yourserver.com/api/delete_reminder',
-  //       data: {'id': id},
-  //     );
-  //     if (response.data['status'] == 'success') {
-  //       setState(() {
-  //         reminders.removeWhere((reminder) => reminder['id'] == id);
-  //       });
-  //       _notificationsPlugin.cancel(id); // 取消本地通知
-  //     }
-  //   } catch (e) {
-  //     _showError('删除服药提醒失败: $e');
-  //   }
-  // }
   Future<void> _deleteReminder(int id) async {
     setState(() {
       reminders.removeWhere((reminder) => reminder['id'] == id);
@@ -149,17 +113,26 @@ class _MedicineScreenState extends State<MedicineScreen> {
 
   // 计划本地通知
   Future<void> _scheduleNotification(int id, String time) async {
+    //time 是预设时间，scheduledTime是预设时间
     final List<String> parts = time.split(':');
     final int hour = int.parse(parts[0]);
     final int minute = int.parse(parts[1]);
     final DateTime now = DateTime.now();
-    final DateTime scheduledTime = DateTime(
+    DateTime scheduledTime = DateTime(
       now.year,
       now.month,
       now.day,
       hour,
       minute,
+      0,
     );
+
+    // // 🛠️ 如果设定的时间已过，则推迟到次日
+    // if (scheduledTime.isBefore(now)) {
+    //   scheduledTime = scheduledTime.add(Duration(days: 1));
+    // }
+    // 🛠️ 显示当前时间和预设时间进行对比（使用 SnackBar 代替 print）
+    _showError("当前时间: ${now.hour}:${now.minute} | 预设时间: $hour:$minute");
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
@@ -172,17 +145,50 @@ class _MedicineScreenState extends State<MedicineScreen> {
       android: androidDetails,
     );
 
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      '服药时间到了！',
-      '请按时服药，保持健康！',
-      tz.TZDateTime.from(scheduledTime, tz.local), // 使用时区处理时间
-      details,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode:
-          AndroidScheduleMode.exactAllowWhileIdle, // 允许在设备休眠时发送通知
-    );
+    // await _notificationsPlugin.show(
+    //   0,
+    //   // Suggested code may be subject to a license. Learn more: ~LicenseLog:2810917617.
+    //   now.toString(),
+    //   scheduledTime.toString(),
+    //   NotificationDetails(
+    //     android: AndroidNotificationDetails(
+    //       'test_channel',
+    //       '测试频道',
+    //       importance: Importance.high,
+    //       priority: Priority.high,
+    //     ),
+    //   ),
+    // );
+
+    // await _notificationsPlugin.zonedSchedule(
+    //   id,
+    //   '服药时间到了！',
+    //   '请按时服药，保持健康！',
+    //   tz.TZDateTime.from(scheduledTime, tz.local), // 使用时区处理时间
+    //   details,
+    //   uiLocalNotificationDateInterpretation:
+    //       UILocalNotificationDateInterpretation.absoluteTime,
+    //   androidScheduleMode:
+    //       AndroidScheduleMode.exactAllowWhileIdle, // 允许在设备休眠时发送通知
+    // );
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        '服药时间到了！',
+        '请按时服药，保持健康！',
+        tz.TZDateTime.from(scheduledTime, tz.local), // 使用时区处理时间,
+        details,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents:
+            DateTimeComponents.time, // To repeat daily at the same time
+      );
+      _showError("通知已成功安排在 ${hour}:${minute}");
+    } catch (e) {
+      _showError("安排通知出错: $e");
+    }
   }
 
   // 选择提醒时间
