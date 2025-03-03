@@ -140,6 +140,7 @@ class _MedicineScreenState extends State<MedicineScreen> {
           '服药提醒',
           importance: Importance.high,
           priority: Priority.high,
+          fullScreenIntent: true,
         );
     const NotificationDetails details = NotificationDetails(
       android: androidDetails,
