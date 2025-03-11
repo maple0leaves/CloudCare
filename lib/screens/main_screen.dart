@@ -1,11 +1,10 @@
-import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'home_screen.dart';
 import 'monitoring_screen.dart';
 import 'medicine_screen.dart';
 import 'alert_screen.dart';
+import 'package:dio/dio.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -15,6 +14,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   Timer? _timer; // 用于定期检查服务器
+  final _dio = Dio();
 
   static final List<Widget> _pages = <Widget>[
     HomeScreen(),
@@ -44,15 +44,11 @@ class _MainScreenState extends State<MainScreen> {
   // 轮询服务器，获取跌倒警报信息
   Future<void> _checkFallAlert() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://your-server.com/get_fall_alert'),
-      );
+      final response = await _dio.get('https://your-server.com/get_fall_alert');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['fall_detected']) {
-          String imageUrl = data['image_url'];
+        if (response.data['fall_detected']) {
+          String imageUrl = response.data['image_url'];
           String alertMessage = "检测到老人跌倒，请及时查看！";
 
           // 跳转到跌倒警报页面
@@ -71,7 +67,14 @@ class _MainScreenState extends State<MainScreen> {
         print("服务器请求失败，状态码：${response.statusCode}");
       }
     } catch (e) {
-      print("请求失败：$e");
+      if (e is DioException) {
+        // Dio 特有的错误处理，提供更详细的错误信息
+        print("请求失败：${e.message}");
+        print("错误类型：${e.type}");
+        print("错误响应：${e.response}");
+      } else {
+        print("请求失败：$e");
+      }
     }
   }
 

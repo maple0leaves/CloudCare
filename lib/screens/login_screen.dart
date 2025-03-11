@@ -46,23 +46,23 @@ class _LoginScreenState extends State<LoginScreen> {
       MaterialPageRoute(builder: (context) => MainScreen()), // 登录成功进入主界面
     );
 
-    // try {
-    //   Response response = await _dio.post(
-    //     'https://yourserver.com/api/login',
-    //     data: {'phone': phone, 'password': password},
-    //   );
+    try {
+      Response response = await _dio.post(
+        'https://yourserver.com/api/login',
+        data: {'phone': phone, 'password': password},
+      );
 
-    //   if (response.data['status'] == 'success') {
-    //     Navigator.pushReplacement(
-    //       context,
-    //       MaterialPageRoute(builder: (context) => MainScreen()), // 登录成功进入主界面
-    //     );
-    //   } else {
-    //     // _showError('用户名或密码错误');
-    //   }
-    // } catch (e) {
-    //   _showError('网络错误，请稍后再试');
-    // }
+      if (response.data['status'] == 'success') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => MainScreen()), // 登录成功进入主界面
+        );
+      } else {
+        // _showError('用户名或密码错误');
+      }
+    } catch (e) {
+      _showError('网络错误，请稍后再试');
+    }
   }
 
   // 显示错误信息
