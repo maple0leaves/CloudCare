@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 // 跌倒警报页面
 class AlertScreen extends StatelessWidget {
   @override

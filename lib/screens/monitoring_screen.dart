@@ -1,28 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 
+void main() => runApp(MonitoringApp());
+
+class MonitoringApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: '远程监控',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: MonitoringScreen(),
+    );
+  }
+}
+
 class MonitoringScreen extends StatefulWidget {
   @override
   _MonitoringScreenState createState() => _MonitoringScreenState();
 }
 
 class _MonitoringScreenState extends State<MonitoringScreen> {
-  late VlcPlayerController _vlcController;
+  VlcPlayerController? _controller;
+  bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
-    _vlcController = VlcPlayerController.network(
-      'rtsp://admin:1@192.168.41.117:8554/live', // 替换为你的 RTSP 地址
-      hwAcc: HwAcc.full, // 启用硬件加速
-      autoPlay: true, // 自动播放
+    _initPlayer();
+  }
+
+  void _initPlayer() {
+    _controller?.dispose();
+
+    // 初始化播放器控制器，使用固定的视频URL
+    _controller = VlcPlayerController.network(
+      'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      hwAcc: HwAcc.full,
+      autoPlay: true,
       options: VlcPlayerOptions(),
     );
+
+    setState(() {
+      _isPlaying = true;
+    });
   }
 
   @override
   void dispose() {
-    _vlcController.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -30,20 +58,42 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('远程监控')),
-      body: Stack(
+      body: Column(
         children: [
-          VlcPlayer(
-            controller: _vlcController,
-            aspectRatio: 16 / 9,
-            placeholder: Center(child: CircularProgressIndicator()), // 加载时显示进度条
+          // 视频播放区域
+          Expanded(
+            child:
+                _controller != null
+                    ? Center(
+                      child: VlcPlayer(
+                        controller: _controller!,
+                        aspectRatio: 16 / 9,
+                        placeholder: Center(child: CircularProgressIndicator()),
+                      ),
+                    )
+                    : Center(child: Text('初始化中...')),
           ),
-          Positioned(
-            top: 20,
-            right: 20,
-            child: FloatingActionButton(
-              backgroundColor: Colors.blue,
-              onPressed: () => _vlcController.play(), // 重新播放
-              child: Icon(Icons.play_arrow, color: Colors.white),
+
+          // 控制区域
+          Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                  onPressed: () {
+                    if (_isPlaying) {
+                      _controller?.pause();
+                    } else {
+                      _controller?.play();
+                    }
+                    setState(() {
+                      _isPlaying = !_isPlaying;
+                    });
+                  },
+                ),
+                IconButton(icon: Icon(Icons.refresh), onPressed: _initPlayer),
+              ],
             ),
           ),
         ],
