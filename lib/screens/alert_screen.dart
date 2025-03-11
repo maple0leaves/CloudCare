@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:vibration/vibration.dart';
-import 'package:http/http.dart' as http;
-import 'main_screen.dart';
 
 class AlertScreen extends StatefulWidget {
   final String imageUrl; // 云端传递的图片地址
@@ -19,70 +15,10 @@ class AlertScreen extends StatefulWidget {
 }
 
 class _AlertScreenState extends State<AlertScreen> {
-  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
-
   @override
   void initState() {
     super.initState();
-    _initNotifications();
-    _showFallAlert();
-  }
-
-  // 初始化本地通知
-  void _initNotifications() {
-    flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    const AndroidInitializationSettings androidInitSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const InitializationSettings initSettings = InitializationSettings(
-      android: androidInitSettings,
-    );
-
-    flutterLocalNotificationsPlugin.initialize(initSettings);
-  }
-
-  // 显示跌倒通知
-  Future<void> _showFallAlert() async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'fall_alert',
-          '跌倒警报',
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: true,
-          enableVibration: true,
-        );
-
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      '跌倒警报',
-      widget.alertMessage,
-      details,
-    );
-
-    // 震动手机提醒
-    if (await Vibration.hasVibrator() ?? false) {
-      Vibration.vibrate(duration: 1000);
-    }
-  }
-
-  // 手动关闭警报
-  void _dismissAlert() {
-    flutterLocalNotificationsPlugin.cancel(0); // 取消通知
-
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context); // 关闭当前页面
-    } else {
-      // 如果 `MainScreen` 没有运行，手动导航回 `MainScreen`
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => MainScreen()),
-      );
-    }
+    // **移除 _showFallAlert()，防止进入此页面就触发通知**
   }
 
   @override
@@ -123,7 +59,11 @@ class _AlertScreenState extends State<AlertScreen> {
                 : const Text('无图片信息'),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _dismissAlert,
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
               child: const Text('关闭警报', style: TextStyle(color: Colors.white)),
             ),

@@ -4,7 +4,10 @@ import 'home_screen.dart';
 import 'monitoring_screen.dart';
 import 'medicine_screen.dart';
 import 'alert_screen.dart';
+import 'fall_alert_placeholder_screen.dart';
 import 'package:dio/dio.dart';
+import 'package:vibration/vibration.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -13,35 +16,55 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  Timer? _timer; // 用于定期检查服务器
+  Timer? _timer;
   final _dio = Dio();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   static final List<Widget> _pages = <Widget>[
     HomeScreen(),
     MonitoringScreen(),
     MedicineScreen(),
-    AlertScreen(
-      imageUrl: '',
-      alertMessage: '',
-    ), // 这里的 AlertScreen 只是占位符，实际跳转时会动态传参
+    FallAlertPlaceholderScreen(), // 默认"跌倒警报"页面
   ];
 
   @override
   void initState() {
     super.initState();
-    // 每 10 秒轮询服务器，检查跌倒警报
+    initNotifications();
     _timer = Timer.periodic(Duration(seconds: 10), (timer) {
       _checkFallAlert();
     });
   }
 
+  void initNotifications() {
+    const AndroidInitializationSettings androidInitializationSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    final InitializationSettings initializationSettings =
+        InitializationSettings(android: androidInitializationSettings);
+
+    flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) =>
+                    AlertScreen(imageUrl: '', alertMessage: '检测到老人跌倒，请查看'),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
-    _timer?.cancel(); // 组件销毁时，停止定时器
+    _timer?.cancel();
     super.dispose();
   }
 
-  // 轮询服务器，获取跌倒警报信息
   Future<void> _checkFallAlert() async {
     try {
       final response = await _dio.get('https://your-server.com/get_fall_alert');
@@ -51,7 +74,8 @@ class _MainScreenState extends State<MainScreen> {
           String imageUrl = response.data['image_url'];
           String alertMessage = "检测到老人跌倒，请及时查看！";
 
-          // 跳转到跌倒警报页面
+          _showFallAlert(alertMessage);
+
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -67,20 +91,92 @@ class _MainScreenState extends State<MainScreen> {
         print("服务器请求失败，状态码：${response.statusCode}");
       }
     } catch (e) {
-      if (e is DioException) {
-        // Dio 特有的错误处理，提供更详细的错误信息
-        print("请求失败：${e.message}");
-        print("错误类型：${e.type}");
-        print("错误响应：${e.response}");
-      } else {
-        print("请求失败：$e");
-      }
+      print("请求失败：$e");
+    }
+  }
+
+  Future<void> _showFallAlert(String message) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'fall_alert',
+          '跌倒警报',
+          channelDescription: '用于跌倒警报的通知',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+        );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.show(0, '跌倒警报', message, details);
+
+    if (await Vibration.hasVibrator() ?? false) {
+      Vibration.vibrate(duration: 1000);
     }
   }
 
   void _onItemTapped(int index) {
+    if (index == 3) {
+      _checkFallAlertAndNavigate(); // 处理跌倒警报
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
+  Future<void> _checkFallAlertAndNavigate() async {
+    try {
+      final response = await _dio.get('https://your-server.com/get_fall_alert');
+      if (response.statusCode == 200) {
+        if (response.data['fall_detected']) {
+          String imageUrl = response.data['image_url'];
+          String alertMessage = "检测到老人跌倒，请及时查看！";
+
+          _showFallAlert(alertMessage);
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => AlertScreen(
+                    imageUrl: imageUrl,
+                    alertMessage: alertMessage,
+                  ),
+            ),
+          );
+          return; // 提前结束，防止执行 setState
+        }
+      } else {
+        print("服务器请求失败，状态码：${response.statusCode}");
+      }
+    } catch (e) {
+      print("请求失败：$e");
+    }
+    // try {
+    //   String imageUrl = 'image_url';
+    //   String alertMessage = "检测到老人跌倒，请及时查看！";
+
+    //   _showFallAlert(alertMessage);
+
+    //   Navigator.push(
+    //     context,
+    //     MaterialPageRoute(
+    //       builder:
+    //           (context) =>
+    //               AlertScreen(imageUrl: imageUrl, alertMessage: alertMessage),
+    //     ),
+    //   );
+    //   return; // 提前结束，防止执行 setState
+    // } catch (e) {
+    //   print("请求失败：$e");
+    // }
+    // **如果没有检测到跌倒，则显示 FallAlertPlaceholderScreen**
     setState(() {
-      _selectedIndex = index;
+      _selectedIndex = 3;
     });
   }
 
