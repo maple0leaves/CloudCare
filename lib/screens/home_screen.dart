@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-
+import 'package:myapp/services/global.dart';
+import 'package:myapp/services/global.dart';
 
 // 对话式首页（类似 ChatGPT, DeepSeek）
 class HomeScreen extends StatefulWidget {
@@ -26,13 +27,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       Response response = await _dio.post(
-        'https://yourserver.com/api/chat',
-        data: {'message': userMessage},
+        'http://120.27.203.77:8000/api/chat',
+        data: {'message': userMessage, 'access_token': access_token},
       );
-
+      // message返回的是markdown格式，需要转换
+      // 流式对话生成
       if (response.data['status'] == 'success') {
         setState(() {
-          messages.add({'role': 'bot', 'content': response.data['reply']});
+          messages.add({'role': 'bot', 'content': response.data['msg']});
         });
       } else {
         setState(() {

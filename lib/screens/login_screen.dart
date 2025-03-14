@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:myapp/screens/main_screen.dart';
+import 'package:myapp/services/global.dart';
 
 void main() {
   runApp(MyApp());
@@ -41,18 +42,19 @@ class _LoginScreenState extends State<LoginScreen> {
     String password = passwordController.text.trim();
 
     // 测试登录跳转
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => MainScreen()), // 登录成功进入主界面
-    );
+    // Navigator.pushReplacement(
+    //   context,
+    //   MaterialPageRoute(builder: (context) => MainScreen()), // 登录成功进入主界面
+    // );
 
     try {
       Response response = await _dio.post(
-        'https://yourserver.com/api/login',
+        'http://120.27.203.77:8000/api/login',
         data: {'phone': phone, 'password': password},
       );
 
       if (response.data['status'] == 'success') {
+        access_token = response.data['access_token'];
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => MainScreen()), // 登录成功进入主界面
@@ -61,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // _showError('用户名或密码错误');
       }
     } catch (e) {
+      print(e);
       _showError('网络错误，请稍后再试');
     }
   }
@@ -143,14 +146,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       Response response = await _dio.post(
-        'https://yourserver.com/api/register',
+        // 'https://yourserver.com/api/register',
+        'http://120.27.203.77:8000/api/register',
         data: {'phone': phone, 'password': password},
       );
 
       if (response.data['status'] == 'success') {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('注册成功，请登录')));
+        ).showSnackBar(SnackBar(content: Text(response.data['msg'])));
         Navigator.pop(context); // 注册成功后返回登录界面
       } else {
         _showError('注册失败，请重试');

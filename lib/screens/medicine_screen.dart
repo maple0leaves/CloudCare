@@ -5,7 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:android_intent_plus/android_intent.dart';
-import 'package:android_intent_plus/flag.dart';
+import 'package:myapp/services/global.dart';
 
 Future<void> requestExactAlarmPermission() async {
   if (await Permission.scheduleExactAlarm.isDenied) {
@@ -60,8 +60,12 @@ class _MedicineScreenState extends State<MedicineScreen> {
   // Future<void> _fetchReminders() async {
   //   try {
   //     Response response = await _dio.get(
-  //       'https://yourserver.com/api/reminders',
+  //       'http://yourserver.com/api/reminders',
   //     );
+  //   Response response  = await _dio.post(
+  //   'http://120.27.203.77:8000/api/reminders',
+  //   data: {'access_token': access_token},
+  // );
   //     if (response.data['status'] == 'success') {
   //       setState(() {
   //         reminders.clear();
@@ -100,9 +104,13 @@ class _MedicineScreenState extends State<MedicineScreen> {
   //   String formattedTime = '${selectedTime!.hour}:${selectedTime!.minute}';
   //   try {
   //     Response response = await _dio.post(
-  //       'https://yourserver.com/api/add_reminder',
+  //       'http://yourserver.com/api/add_reminder',
   //       data: {'time': formattedTime},
   //     );
+  //     Response response  = await _dio.post(
+  //   'http://120.27.203.77:8000/api/add_reminder',
+  //   data: {'time': formattedTime,'access_token': access_token},
+  // );
   //     if (response.data['status'] == 'success') {
   //       setState(() {
   //         reminders.add({'id': response.data['id'], 'time': formattedTime});
@@ -131,9 +139,13 @@ class _MedicineScreenState extends State<MedicineScreen> {
   // Future<void> _deleteReminder(int id) async {
   //   try {
   //     Response response = await _dio.post(
-  //       'https://yourserver.com/api/delete_reminder',
+  //       'http://yourserver.com/api/delete_reminder',
   //       data: {'id': id},
   //     );
+  //     Response response  = await _dio.post(
+  //   'http://120.27.203.77:8000/api/delete_reminder',
+  //   data: {'id': id,'access_token': access_token},
+  // );
   //     if (response.data['status'] == 'success') {
   //       setState(() {
   //         reminders.removeWhere((reminder) => reminder['id'] == id);

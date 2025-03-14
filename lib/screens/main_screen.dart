@@ -8,6 +8,10 @@ import 'fall_alert_placeholder_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:myapp/services/global.dart';
+
+// http返回检测到跌倒，生成FallAlertPlaceholderScreen类之后，就不发送请求
+// 直到点击关闭警报返回首页又再开始发送请求
 
 class MainScreen extends StatefulWidget {
   @override
@@ -32,7 +36,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     initNotifications();
-    _timer = Timer.periodic(Duration(seconds: 10), (timer) {
+    _timer = Timer.periodic(Duration(seconds: 30), (timer) {
       _checkFallAlert();
     });
   }
@@ -67,15 +71,17 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _checkFallAlert() async {
     try {
-      final response = await _dio.get('https://your-server.com/get_fall_alert');
-
+      final response = await _dio.post(
+        'http://120.27.203.77:8000/api/get_fall_alert',
+        data: {'access_token': access_token},
+      );
       if (response.statusCode == 200) {
         if (response.data['fall_detected']) {
           String imageUrl = response.data['image_url'];
           String alertMessage = "检测到老人跌倒，请及时查看！";
 
           _showFallAlert(alertMessage);
-
+          print(imageUrl);
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -130,7 +136,10 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _checkFallAlertAndNavigate() async {
     try {
-      final response = await _dio.get('https://your-server.com/get_fall_alert');
+      final response = await _dio.post(
+        'http://120.27.203.77:8000/api/get_fall_alert',
+        data: {'access_token': access_token},
+      );
       if (response.statusCode == 200) {
         if (response.data['fall_detected']) {
           String imageUrl = response.data['image_url'];
