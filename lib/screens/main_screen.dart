@@ -10,9 +10,6 @@ import 'package:vibration/vibration.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:myapp/services/global.dart';
 
-// http返回检测到跌倒，生成FallAlertPlaceholderScreen类之后，就不发送请求
-// 直到点击关闭警报返回首页又再开始发送请求
-
 class MainScreen extends StatefulWidget {
   @override
   _MainScreenState createState() => _MainScreenState();
@@ -24,6 +21,7 @@ class _MainScreenState extends State<MainScreen> {
   final _dio = Dio();
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
+  bool _isAlertActive = false; // 用于控制请求的标志
 
   static final List<Widget> _pages = <Widget>[
     HomeScreen(),
@@ -36,9 +34,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     initNotifications();
-    _timer = Timer.periodic(Duration(seconds: 30), (timer) {
-      _checkFallAlert();
-    });
+    _startCheckingFallAlert();
   }
 
   void initNotifications() {
@@ -51,16 +47,18 @@ class _MainScreenState extends State<MainScreen> {
     flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder:
-                (context) =>
-                    AlertScreen(imageUrl: '', alertMessage: '检测到老人跌倒，请查看'),
-          ),
-        );
+        _navigateToAlertScreen('', '检测到老人跌倒，请查看');
       },
     );
+  }
+
+  void _startCheckingFallAlert() {
+    _timer?.cancel(); // 确保不重复创建定时任务
+    _timer = Timer.periodic(Duration(seconds: 30), (timer) {
+      if (!_isAlertActive) {
+        _checkFallAlert();
+      }
+    });
   }
 
   @override
@@ -75,26 +73,13 @@ class _MainScreenState extends State<MainScreen> {
         'http://120.27.203.77:8000/api/get_fall_alert',
         data: {'access_token': access_token},
       );
-      if (response.statusCode == 200) {
-        if (response.data['fall_detected']) {
-          String imageUrl = response.data['image_url'];
-          String alertMessage = "检测到老人跌倒，请及时查看！";
-
-          _showFallAlert(alertMessage);
-          print(imageUrl);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => AlertScreen(
-                    imageUrl: imageUrl,
-                    alertMessage: alertMessage,
-                  ),
-            ),
-          );
-        }
-      } else {
-        print("服务器请求失败，状态码：${response.statusCode}");
+      if (response.statusCode == 200 && response.data['fall_detected']) {
+        setState(() {
+          _isAlertActive = true; // 停止后续请求
+        });
+        String imageUrl = response.data['image_url'];
+        _showFallAlert("检测到老人跌倒，请及时查看！");
+        _navigateToAlertScreen(imageUrl, "检测到老人跌倒，请及时查看！");
       }
     } catch (e) {
       print("请求失败：$e");
@@ -124,9 +109,27 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  void _navigateToAlertScreen(String imageUrl, String alertMessage) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) =>
+                AlertScreen(imageUrl: imageUrl, alertMessage: alertMessage),
+      ),
+    ).then((_) {
+      // 当警报界面关闭时，恢复定时请求
+      setState(() {
+        _isAlertActive = false;
+        _selectedIndex = 0; // 返回首页
+      });
+      _startCheckingFallAlert();
+    });
+  }
+
   void _onItemTapped(int index) {
     if (index == 3) {
-      _checkFallAlertAndNavigate(); // 处理跌倒警报
+      _checkFallAlertAndNavigate();
     } else {
       setState(() {
         _selectedIndex = index;
@@ -140,50 +143,18 @@ class _MainScreenState extends State<MainScreen> {
         'http://120.27.203.77:8000/api/get_fall_alert',
         data: {'access_token': access_token},
       );
-      if (response.statusCode == 200) {
-        if (response.data['fall_detected']) {
-          String imageUrl = response.data['image_url'];
-          String alertMessage = "检测到老人跌倒，请及时查看！";
-
-          _showFallAlert(alertMessage);
-
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => AlertScreen(
-                    imageUrl: imageUrl,
-                    alertMessage: alertMessage,
-                  ),
-            ),
-          );
-          return; // 提前结束，防止执行 setState
-        }
-      } else {
-        print("服务器请求失败，状态码：${response.statusCode}");
+      if (response.statusCode == 200 && response.data['fall_detected']) {
+        setState(() {
+          _isAlertActive = true;
+        });
+        String imageUrl = response.data['image_url'];
+        _showFallAlert("检测到老人跌倒，请及时查看！");
+        _navigateToAlertScreen(imageUrl, "检测到老人跌倒，请及时查看！");
+        return;
       }
     } catch (e) {
       print("请求失败：$e");
     }
-    // try {
-    //   String imageUrl = 'image_url';
-    //   String alertMessage = "检测到老人跌倒，请及时查看！";
-
-    //   _showFallAlert(alertMessage);
-
-    //   Navigator.push(
-    //     context,
-    //     MaterialPageRoute(
-    //       builder:
-    //           (context) =>
-    //               AlertScreen(imageUrl: imageUrl, alertMessage: alertMessage),
-    //     ),
-    //   );
-    //   return; // 提前结束，防止执行 setState
-    // } catch (e) {
-    //   print("请求失败：$e");
-    // }
-    // **如果没有检测到跌倒，则显示 FallAlertPlaceholderScreen**
     setState(() {
       _selectedIndex = 3;
     });
