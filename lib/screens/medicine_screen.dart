@@ -57,38 +57,39 @@ class _MedicineScreenState extends State<MedicineScreen> {
 
   // 从服务器获取服药提醒
   // 从服务器获取服药提醒
-  // Future<void> _fetchReminders() async {
-  //   try {
-  //     Response response = await _dio.get(
-  //       'http://yourserver.com/api/reminders',
-  //     );
-  //   Response response  = await _dio.post(
-  //   'http://120.27.203.77:8000/api/reminders',
-  //   data: {'access_token': access_token},
-  // );
-  //     if (response.data['status'] == 'success') {
-  //       setState(() {
-  //         reminders.clear();
-  //         reminders.addAll(
-  //           List<Map<String, dynamic>>.from(response.data['reminders']),
-  //         );
-  //       });
-  //     }
-  //   } catch (e) {
-  //     _showError('获取服药提醒失败: $e');
-  //   }
-  // }
   Future<void> _fetchReminders() async {
-    await Future.delayed(Duration(seconds: 1)); // 模拟网络请求延迟
-    setState(() {
-      reminders.clear();
-      reminders.addAll([
-        {'id': 1, 'time': '08:00'},
-        {'id': 2, 'time': '12:00'},
-        {'id': 3, 'time': '18:00'},
-      ]);
-    });
+    try {
+      // Response response = await _dio.get(
+      //   'http://yourserver.com/api/reminders',
+      // );
+      Response response = await _dio.post(
+        'http://120.27.203.77:8000/api/get_reminders',
+        data: {'access_token': access_token},
+      );
+      print(response.data);
+      if (response.data['status'] == 'success') {
+        setState(() {
+          reminders.clear();
+          reminders.addAll(
+            List<Map<String, dynamic>>.from(response.data['timelist']),
+          );
+        });
+      }
+    } catch (e) {
+      _showError('获取服药提醒失败: $e');
+    }
   }
+  // Future<void> _fetchReminders() async {
+  //   await Future.delayed(Duration(seconds: 1)); // 模拟网络请求延迟
+  //   setState(() {
+  //     reminders.clear();
+  //     reminders.addAll([
+  //       {'id': 1, 'time': '08:00'},
+  //       {'id': 2, 'time': '12:00'},
+  //       {'id': 3, 'time': '18:00'},
+  //     ]);
+  //   });
+  // }
 
   // 显示错误信息
   void _showError(String message) {
@@ -99,69 +100,73 @@ class _MedicineScreenState extends State<MedicineScreen> {
 
   // 添加新的服药提醒
   // 添加新的服药提醒，并存储到服务器
+  Future<void> _addReminder() async {
+    print(selectedTime);
+    if (selectedTime == null) return;
+    String formattedTime =
+        '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}';
+    print(formattedTime);
+    try {
+      // Response response = await _dio.post(
+      //   'http://yourserver.com/api/add_reminder',
+      //   data: {'time': formattedTime},
+      // );
+      Response response = await _dio.post(
+        'http://120.27.203.77:8000/api/add_reminder',
+        data: {'time': formattedTime, 'access_token': access_token},
+      );
+      print(response.data);
+      if (response.data['status'] == 'success') {
+        setState(() {
+          reminders.add({'id': response.data['id'], 'time': formattedTime});
+        });
+        _scheduleNotification(response.data['id'], formattedTime); // 设置本地通知
+      }
+    } catch (e) {
+      _showError('添加服药提醒失败: $e');
+    }
+  }
   // Future<void> _addReminder() async {
   //   if (selectedTime == null) return;
   //   String formattedTime = '${selectedTime!.hour}:${selectedTime!.minute}';
-  //   try {
-  //     Response response = await _dio.post(
-  //       'http://yourserver.com/api/add_reminder',
-  //       data: {'time': formattedTime},
-  //     );
-  //     Response response  = await _dio.post(
-  //   'http://120.27.203.77:8000/api/add_reminder',
-  //   data: {'time': formattedTime,'access_token': access_token},
-  // );
-  //     if (response.data['status'] == 'success') {
-  //       setState(() {
-  //         reminders.add({'id': response.data['id'], 'time': formattedTime});
-  //       });
-  //       _scheduleNotification(response.data['id'], formattedTime); // 设置本地通知
-  //     }
-  //   } catch (e) {
-  //     _showError('添加服药提醒失败: $e');
-  //   }
+
+  //   setState(() {
+  //     int newId = reminders.isEmpty ? 1 : reminders.last['id'] + 1; // 自动生成ID
+  //     reminders.add({'id': newId, 'time': formattedTime});
+  //   });
+
+  //   _scheduleNotification(reminders.last['id'], formattedTime);
+  //   _showError("提醒已添加，时间: $formattedTime"); // 调试信息
   // }
-  Future<void> _addReminder() async {
-    if (selectedTime == null) return;
-    String formattedTime = '${selectedTime!.hour}:${selectedTime!.minute}';
-
-    setState(() {
-      int newId = reminders.isEmpty ? 1 : reminders.last['id'] + 1; // 自动生成ID
-      reminders.add({'id': newId, 'time': formattedTime});
-    });
-
-    _scheduleNotification(reminders.last['id'], formattedTime);
-    _showError("提醒已添加，时间: $formattedTime"); // 调试信息
-  }
 
   // 删除服药提醒
   // 删除服药提醒
-  // Future<void> _deleteReminder(int id) async {
-  //   try {
-  //     Response response = await _dio.post(
-  //       'http://yourserver.com/api/delete_reminder',
-  //       data: {'id': id},
-  //     );
-  //     Response response  = await _dio.post(
-  //   'http://120.27.203.77:8000/api/delete_reminder',
-  //   data: {'id': id,'access_token': access_token},
-  // );
-  //     if (response.data['status'] == 'success') {
-  //       setState(() {
-  //         reminders.removeWhere((reminder) => reminder['id'] == id);
-  //       });
-  //       _notificationsPlugin.cancel(id); // 取消本地通知
-  //     }
-  //   } catch (e) {
-  //     _showError('删除服药提醒失败: $e');
-  //   }
-  // }
   Future<void> _deleteReminder(int id) async {
-    setState(() {
-      reminders.removeWhere((reminder) => reminder['id'] == id);
-    });
-    _notificationsPlugin.cancel(id);
+    try {
+      // Response response = await _dio.post(
+      //   'http://yourserver.com/api/delete_reminder',
+      //   data: {'id': id},
+      // );
+      Response response = await _dio.post(
+        'http://120.27.203.77:8000/api/delete_reminder',
+        data: {'id': id, 'access_token': access_token},
+      );
+      if (response.data['status'] == 'success') {
+        setState(() {
+          reminders.removeWhere((reminder) => reminder['id'] == id);
+        });
+        _notificationsPlugin.cancel(id); // 取消本地通知
+      }
+    } catch (e) {
+      _showError('删除服药提醒失败: $e');
+    }
   }
+  // Future<void> _deleteReminder(int id) async {
+  //   setState(() {
+  //     reminders.removeWhere((reminder) => reminder['id'] == id);
+  //   });
+  //   _notificationsPlugin.cancel(id);
+  // }
 
   // 计划本地通知
   Future<void> _scheduleNotification(int id, String time) async {
@@ -178,7 +183,6 @@ class _MedicineScreenState extends State<MedicineScreen> {
       minute,
       0,
     );
-
     // // 🛠️ 如果设定的时间已过，则推迟到次日
     // if (scheduledTime.isBefore(now)) {
     //   scheduledTime = scheduledTime.add(Duration(days: 1));

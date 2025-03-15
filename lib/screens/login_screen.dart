@@ -150,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'http://120.27.203.77:8000/api/register',
         data: {'phone': phone, 'password': password},
       );
-
+      
       if (response.data['status'] == 'success') {
         ScaffoldMessenger.of(
           context,
