@@ -22,12 +22,16 @@ class _HomeScreenState extends State<HomeScreen> {
     String userMessage = _controller.text.trim();
     if (userMessage.isEmpty) return;
 
+    // 先显示用户消息并且显示加载圈
     setState(() {
       messages.add({'role': 'user', 'content': userMessage});
       _controller.clear();
       _isLoading = true;
       _currentBotMessageIndex = messages.length; // 记录当前正在显示的bot消息的位置
     });
+
+    // 滚动到最底部
+    _scrollToBottom();
 
     try {
       Response response = await _dio.post(
@@ -47,7 +51,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // 监听流式数据
         await for (var chunk in stream) {
-          // 将流中的字节转成字符串，并累积
           buffer.write(utf8.decode(chunk)); // 使用 utf8 解码字节流
 
           // 确保当前bot消息索引有效
